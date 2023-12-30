@@ -1,0 +1,357 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ page import="java.time.LocalDate" %>
+<%
+LocalDate locDate = LocalDate.now();
+String strDate = locDate.toString();
+String cYear = strDate.split("-")[0]; //현재 연도
+String cMonth = strDate.split("-")[1]; //현재 월
+int cY = Integer.parseInt(cYear);
+int cM = Integer.parseInt(cMonth);
+%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>체험내역확인</title>
+<%@ include file="/header.jsp" %>
+
+<style>
+   div.resv-title {
+      text-align: center;
+   }
+   div.resv-title>h4 {
+      margin:10px 10px;
+      text-align: center;
+   }
+   div.resv-search {
+      text-align: right;
+   }
+   table.resv-table {
+      text-align: center;
+   }
+   div.resv-list {
+      margin-top: 20px;
+   }   
+   div.resv-list>p {
+      padding: 100px;
+      text-align: center;
+   }
+   div.resv-list>table {
+      width: 100%;
+      border-collapse: collapse;
+   }
+   div.resv-list>table>tbody>tr>th,td {
+      border: 1px solid #cdcdcd;
+      padding: 5px;
+   }
+
+   section.ResvPage {
+      margin-top: 15px;
+      text-align: center;
+   }
+   
+   div.container {
+   		margin-bottom: 80px;
+   }
+</style>
+
+
+<script>
+//예약취소 함수
+function resvCancel(num, date) {
+	//alert(" 취소 할 번호 : "+num+" , 예약날짜 : "+date);
+
+	var resvDateArr = new Array();
+		resvDateArr = date.split("-"); //예약일(연도-월-일) : 구분자(-)로 분리..
+	  
+	var now = new Date();
+	var year = now.getFullYear(); //연도
+	var month = now.getMonth()+1; //월
+	var day = now.getDate(); //일
+	  
+	var stDate = new Date(resvDateArr[0], resvDateArr[1], resvDateArr[2]); //예약일 날짜 설정
+	var endDate = new Date(year, month, day); //오늘 날짜 설정
+	  
+	var btMs = endDate.getTime() - stDate.getTime(); //날짜 일수 시간 계산
+	var btDay = btMs / (1000*60*60*24);
+	  
+	//console.log("오늘 날짜와 예약일과의 일수 차이는 : " + btDay);
+	//alert("오늘 날짜와 예약일과의 일수 차이는 : " + btDay);
+	
+	if(btDay >= 0) {
+		alert("예약취소는 예약당일의 전날(예약일 하루전)까지만 할 수 있습니다.");
+		return false;
+	} else {
+		//alert("아래 if(confirm){} 메시지 창에서 확인 클릭시 예약취소시킴.");
+	}
+
+	var result = confirm("예약을 취소하시겠습니까?")
+	if(result) {
+		//alert("예약취소 가능 : 확인(true) ");
+		document.location.href = "resvCancel.do?num="+num+"&date="+date; //취소 페이지 실행
+		return false;
+	} else {
+		//alert("예약취소 불가능 : 취소(false) ");		
+		return false;
+	}
+	
+	return false;
+}
+</script>
+
+<script>
+function ResvPageList(page) {
+      const searchParams = new URLSearchParams(location.search);
+      if(searchParams.has('search')){
+         var listBy = searchParams.get('search');
+         location.href="/resvCheck.do?page="+page+"&search="+listBy;
+      } else {
+         location.href="/resvCheck.do?page="+page;
+      }
+      if(searchParams.has('searchKeyword')){
+         var searchKeyword = searchParams.get('searchKeyword');
+         location.href="/resvCheck.do?page="+page+"&searchKeyword="+searchKeyword;
+      }
+   }
+</script>
+</head>
+
+<body>
+<div>
+<%@ include file="resvMenu.jsp" %>
+</div>
+
+<!-- 체험내역확인 페이지 : resvCheck.jsp -->
+
+<%-- resvList : ${resvList} --%>
+
+<%-- <%=cYear %>, <%=cMonth %> --%>
+
+
+
+<div class="container">
+   <div class="resv-wrap">
+   
+      <div class="resv-title">
+         <h4>체험 예약 내역</h4>
+      </div>
+
+         <c:if test="${user_id eq NULL}">
+         <div class="resv-list">
+            <p>체험 상품 예약 내역이 없습니다.</p>
+         </div>         
+         </c:if>
+
+         <c:if test="${user_id ne NULL}">
+            <div class="resv-search">
+            <form name="resvForm" method="post" action="/resvCheck.do">
+               <select name="searchYear">
+                  <option value="0">연도 선택</option>
+               <% for(int i=(cY+1); i>=(cY-3); i--) { %>
+                  <option value="<%=i%>" <%if( (request.getParameter("searchYear")!=null) && (Integer.parseInt(request.getParameter("searchYear"))==i) ){%>selected<%}%>><%=i%> 년</option>
+               <% } %>
+               </select>
+               <select name="searchMonth">
+                  <option value="0">월 선택</option>               
+               <% for(int i=1; i<=12; i++) { %>
+                  <option value="<%=i%>" <%if( (request.getParameter("searchMonth")!=null) && (Integer.parseInt(request.getParameter("searchMonth"))==i) ){%>selected<%}%>><%=i%> 월</option>
+               <% } %>
+               </select>
+               <button type="submit"> 검색 </button>
+            </form>
+            </div>
+            
+         <div class="resv-list">
+            <table class="resv-table">
+            <tbody>
+               <tr>
+                  <th>예약번호</th>
+                  <th>예약자명</th>                  
+                  <th>예약날짜</th>
+                  <th>예약금액</th>
+                  <th>성인인원</th>
+                  <th>청소년인원</th>
+                  <th>상품코드</th>
+                  <th>취소여부</th>
+               </tr>
+
+            <c:forEach items="${resvList}" var="resv">
+               <tr>
+                  <td>${resv.resv_num}</td>
+                  <td>${resv.resv_name}</td>
+                  <td>${resv.resv_date}</td>
+                  <td>${resv.resv_totalprice}원</td>
+                  <td>${resv.resv_headcount}</td>
+                  <td>${resv.resv_youthheadcount}</td>
+                  <td>
+                     <c:choose>
+                        <c:when test="${resv.resv_status eq 'n'}">
+                           <a href="javascript:;" onclick="return resvCancel('${resv.resv_num}', '${resv.resv_date}')">예약취소</a>
+                        </c:when>
+                        <c:otherwise>
+                           <span>취소완료</span>
+                        </c:otherwise>
+                     </c:choose>
+                  </td>
+               </tr>
+            </c:forEach>
+            </tbody>
+            </table>
+         </div>
+         </c:if>
+   </div>
+</div>
+
+<%@ include file="/footer.jsp" %>
+
+
+</body>
+</html>
+
+// controller
+
+// 1. 체험 예약 액션
+	   @RequestMapping("/resv.do")
+	   public String doReserve(HttpSession session, HttpServletRequest request, PlayListVO pvo, ResvVO rvo, Model model) throws IOException {
+	      System.out.println("resv.do : 실행");      
+	      try {
+	         System.out.println("resv_name : "+(String)request.getParameter("resv_name"));
+	         List<PlayListVO> playList = playListService.getPlayList();
+	         model.addAttribute("playList", playList);
+	         //System.out.println("playList : "+playList);
+	// 여기부터 가격         
+	         int totalprice = 0; //예약 최종적용금액
+	         int sumPrice = 0; //상품별가격합계
+	         int personSumPrice = 0; //가격합계(성인)
+	         int youthSumPrice = 0; //가격합계(청소년)
+	         //String packPName = "패키지상품(건초+우유+소+치즈+쿠킹)";
+	         
+	         // 가격 합
+	         for(int i=0; i<playList.size(); i++) {
+	            sumPrice += playList.get(i).getPla_price();
+	         }
+	         
+	         // 성인/청소년/총 가격
+	         if(sumPrice > 0) {
+	            if(request.getParameter("resv_headcount") != null) {
+	               System.out.println("resv_headcount : "+Integer.parseInt(request.getParameter("resv_headcount")));
+	               personSumPrice = (sumPrice - 15000); //성인가격(15000원 할인)
+	               personSumPrice = (personSumPrice*Integer.parseInt(request.getParameter("resv_headcount"))); //성인가격 * 인원수               
+	            }
+	            if(request.getParameter("resv_youthheadcount") != null) {
+	               System.out.println("resv_youthheadcount : "+Integer.parseInt(request.getParameter("resv_youthheadcount")));
+	               youthSumPrice = (sumPrice - 30000); //청소년가격(30000원 할인)
+	               youthSumPrice = (youthSumPrice*Integer.parseInt(request.getParameter("resv_youthheadcount"))); //청소년가격   * 인원수            
+	            }
+	            totalprice = (personSumPrice + youthSumPrice); //최종적용금액
+	         }
+	         
+	         
+	         System.out.println("sumPrice(상품가격합) : "+sumPrice);         
+	         System.out.println("personSumPrice : "+personSumPrice);
+	         System.out.println("youthSumPrice : "+youthSumPrice);
+	         System.out.println("totalprice : "+totalprice);
+	// 여기까지
+	         
+	// 여기부터 date         
+	         
+	         String reqDate = (String)request.getParameter("resv_date"); //(년-월-일) 폼 전송값..
+	         String[] reqDateArr = reqDate.split("-"); //구분자(-)로 분리         
+	         
+	         //년도는 1900 차감, 월은 1을 차감..
+	         java.util.Date rDate = new java.util.Date((Integer.parseInt(reqDateArr[0])-1900), (Integer.parseInt(reqDateArr[1])-1), Integer.parseInt(reqDateArr[2]), 0, 0, 0);
+	         //java.util.Date rDate = new java.util.Date();
+	         java.sql.Date sDate = new java.sql.Date(rDate.getTime());
+
+	         System.out.println("java.sql.Date sDate : "+sDate);
+
+	// 여기까지
+	         rvo.setResv_pnum(1);
+	         rvo.setResv_totalprice(totalprice);
+	         rvo.setResv_status("n");
+	         rvo.setResv_compay("y");
+	         resvService.insertResv(rvo);
+	         
+	         if(request.getParameter("resv_pnum") != null) {
+	            String user_id = (String)session.getAttribute("user_id");
+	            System.out.println("user_id : " + user_id);
+	            
+	            model.addAttribute("resv_userId", user_id);
+	            rvo.setResv_userId(user_id);
+	            
+	            List<ResvVO> resvList = resvService.getUserResvList(rvo);
+	            model.addAttribute("resvList", resvList);
+	         }
+	         
+	         return "redirect:/resvCheck.do";
+	         
+	      }catch(Exception e){
+	         e.printStackTrace();
+	      }
+	      return "redirect:/resvCheck.do";
+	   }
+
+// 2. 체험 예약 내역 페이지
+	@RequestMapping("/resvCheck.do")
+	public String showResvList(HttpSession session, HttpServletRequest request, ResvVO vo, Model model) {
+		System.out.println("ResvVO.do : 예약내역 보여주기");
+		
+		String user_id = (String)session.getAttribute("user_id");
+		System.out.println("user_id : " + user_id);
+		
+		model.addAttribute("resv_userId", user_id);
+		vo.setResv_userId(user_id);
+		
+		if(request.getParameter("searchYear") != null && request.getParameter("searchMonth") != null) {
+			
+			System.out.println("searchYear : " + request.getParameter("searchYear"));
+			System.out.println("searchMonth : " + request.getParameter("searchMonth"));
+			model.addAttribute("searchYear", request.getParameter("searchYear"));
+			model.addAttribute("searchMonth", request.getParameter("searchMonth"));
+
+			String resvSdate = request.getParameter("searchYear")+"-"+request.getParameter("searchMonth")+"-01";
+			String resvEdate = request.getParameter("searchYear")+"-"+request.getParameter("searchMonth")+"-31";
+//			if( (Integer.parseInt(request.getParameter("searchYear")) < 1) && (Integer.parseInt(request.getParameter("searchMonth")) < 1) ) { //년,월 선택 없을 때
+//				resvSdate = null;
+//				resvEdate = null;
+//			} else if( (Integer.parseInt(request.getParameter("searchYear")) > 0) && (Integer.parseInt(request.getParameter("searchMonth")) < 1) ) { //월 선택 없을 때
+//				resvSdate = request.getParameter("searchYear")+"-"+"01-01";
+//				resvEdate = request.getParameter("searchYear")+"-"+"12-31";
+//			}
+			model.addAttribute("searchSdate", resvSdate);
+			model.addAttribute("searchEdate", resvEdate);
+			vo.setSearchSdate(resvSdate);
+			vo.setSearchEdate(resvEdate);
+			System.out.println("searchSdate : " + resvSdate);
+			System.out.println("searchEdate : " + resvEdate);
+		} else {
+			LocalDate l = LocalDate.now();
+			String s = l.toString();
+			String resvSdate = s.split("-")[0]+"-"+s.split("-")[1]+"-01";
+			String resvEdate = s.split("-")[0]+"-"+s.split("-")[1]+"-31";
+//			if( (Integer.parseInt(s.split("-")[0]) < 1) && (Integer.parseInt(s.split("-")[1]) < 1) ) { //년,월 없을 때
+//				resvSdate = null;
+//				resvEdate = null;
+//			} else if( (Integer.parseInt(s.split("-")[0]) > 0) && (Integer.parseInt(s.split("-")[1]) < 1) ) { //월 없을 때
+//				resvSdate = s.split("-")[0]+"-"+"01-01";
+//				resvEdate = s.split("-")[0]+"-"+"12-31";
+//			}
+			model.addAttribute("searchSdate", resvSdate);
+			model.addAttribute("searchEdate", resvEdate);
+			vo.setSearchSdate(resvSdate);
+			vo.setSearchEdate(resvEdate);
+			System.out.println("searchSdate : " + resvSdate);
+			System.out.println("searchEdate : " + resvEdate);
+		}
+
+		List<ResvVO> resvList = resvService.getUserResvList(vo);
+		model.addAttribute("resvList", resvList);
+		//model.addAttribute("resvList", resvService.getUserResvList(vo));
+		//System.out.println("resvList : "+resvList);
+		
+		model.addAttribute("total", resvList.size());
+		System.out.println("total : " + resvList.size());
+
+		return "play/resvCheck";
+	}

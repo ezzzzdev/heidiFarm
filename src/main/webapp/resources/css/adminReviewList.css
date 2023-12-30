@@ -1,0 +1,29 @@
+@charset "UTF-8";
+
+.form-control{
+    width: 100%;
+    height: 25px;
+    margin-bottom: 20px;
+    
+}
+.alldiv {
+    width: 35%;
+    margin: auto;
+    margin-top: 30px;
+}
+span.input-group-text {
+    display: inline-block;
+    margin-bottom: 8px;
+}
+.textarea{
+	 resize: none;
+	 height: 70px;	 
+}
+.header{
+	text-align:center;
+}
+button#ReviewListget {
+    float: right;
+}
+
+.reptDtdiv { width: 80%; margin: auto; margin-top: 30px; }
